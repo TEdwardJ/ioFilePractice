@@ -22,7 +22,7 @@ public class FileManager {
      */
     public static int countDirs(String path) {
         File startDirectory = new File(path);
-        return countItems(startDirectory, DIRECTORY);
+        return countChildFileSystemItems(startDirectory, DIRECTORY);
     }
 
     /**
@@ -31,9 +31,8 @@ public class FileManager {
     */
     public static void move(String from, String to) {
         File startDirectory = new File(from);
-        copyItems(startDirectory, to, true);
+        copyFileSystemItems(startDirectory, to, true);
     }
-
 
     /**
      * Принимает путь к папке,
@@ -41,7 +40,7 @@ public class FileManager {
      */
     public static int countFiles(String path) {
         File startDirectory = new File(path);
-        return countItems(startDirectory, FILE);
+        return countChildFileSystemItems(startDirectory, FILE);
     }
 
     /**
@@ -50,7 +49,7 @@ public class FileManager {
      */
     public static void remove(String from) {
         File startDirectory = new File(from);
-        removeItems(startDirectory);
+        removeFileSystemItemsRecursively(startDirectory);
     }
 
     /**
@@ -59,23 +58,22 @@ public class FileManager {
      */
     public static void copy(String from, String to) {
         File startDirectory = new File(from);
-        copyItems(startDirectory, to, false);
+        copyFileSystemItems(startDirectory, to, false);
     }
 
     private static File[] getChildFileSystemItems(File fileSystemItem, FileSystemItemType itemType) {
-        FileFilter actualFilter = fileFilters.get(itemType);
-        File[] list = fileSystemItem.listFiles(actualFilter);
+        File[] list = fileSystemItem.listFiles(fileFilters.get(itemType));
         if (list == null) {
             return EMPTY_FILE_LIST;
         }
         return list;
     }
 
-    private static int countItems(File fileSystemItem, FileSystemItemType itemType) {
+    private static int countChildFileSystemItems(File fileSystemItem, FileSystemItemType itemType) {
         if (fileSystemItem.isDirectory()) {
             int counter = itemType.equals(FILE) ? 0 : 1;
-            for (File item : getChildFileSystemItems(fileSystemItem, DIRECTORY)) {
-                counter += countItems(item, itemType);
+            for (File directory : getChildFileSystemItems(fileSystemItem, DIRECTORY)) {
+                counter += countChildFileSystemItems(directory, itemType);
             }
             if (itemType.equals(FILE) || itemType.equals(ALL)) {
                 counter += getChildFileSystemItems(fileSystemItem, FILE).length;
@@ -85,14 +83,14 @@ public class FileManager {
         return 0;
     }
 
-    private static void copyItems(File fileSystemItem, String to, boolean move) {
+    private static void copyFileSystemItems(File fileSystemItem, String to, boolean move) {
         if (fileSystemItem.isDirectory()) {
             File destinationDir = copyDir(fileSystemItem, to);
             if (destinationDir == null){
                 return;
             }
             for (File directory : getChildDirectories(fileSystemItem)) {
-                copyItems(directory, destinationDir.getPath(), move);
+                copyFileSystemItems(directory, destinationDir.getPath(), move);
             }
             for (File file : getChildFiles(fileSystemItem)) {
                 copyFile(file, destinationDir.getPath());
@@ -108,10 +106,10 @@ public class FileManager {
         }
     }
 
-    private static void removeItems(File fileSystemItem) {
+    private static void removeFileSystemItemsRecursively(File fileSystemItem) {
         if (fileSystemItem.isDirectory()) {
             for (File directory : getChildDirectories(fileSystemItem)) {
-                removeItems(directory);
+                removeFileSystemItemsRecursively(directory);
             }
             for (File file : getChildFiles(fileSystemItem)) {
                 file.delete();
@@ -124,11 +122,9 @@ public class FileManager {
         return getChildFileSystemItems(fileSystemItem, FILE);
     }
 
-
     private static File[] getChildDirectories(File fileSystemItem) {
         return getChildFileSystemItems(fileSystemItem, DIRECTORY);
     }
-
 
     private static void copyFile(File source, String to) {
         int size;
@@ -143,8 +139,6 @@ public class FileManager {
             while ((size = sourceFile.read(buffer)) > 0) {
                 destinationStream.write(buffer, 0, size);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
