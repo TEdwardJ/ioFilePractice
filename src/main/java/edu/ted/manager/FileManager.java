@@ -8,12 +8,12 @@ import static edu.ted.manager.FileSystemItemType.*;
 
 public class FileManager {
     private static final File[] EMPTY_FILE_LIST = new File[]{};
-    private static final Map<FileSystemItemType, FileFilter> fileFilters = new HashMap<>(4, 1);
+    private static final Map<FileSystemItemType, FileFilter> FILE_FILTERS = new HashMap<>(3, 1);
 
     static {
-        fileFilters.put(DIRECTORY, File::isDirectory);
-        fileFilters.put(FILE, File::isFile);
-        fileFilters.put(ALL, null);
+        FILE_FILTERS.put(DIRECTORY, File::isDirectory);
+        FILE_FILTERS.put(FILE, File::isFile);
+        FILE_FILTERS.put(ALL, null);
     }
 
     /**
@@ -62,20 +62,20 @@ public class FileManager {
     }
 
     private static File[] getChildFileSystemItems(File fileSystemItem, FileSystemItemType itemType) {
-        File[] list = fileSystemItem.listFiles(fileFilters.get(itemType));
+        File[] list = fileSystemItem.listFiles(FILE_FILTERS.get(itemType));
         if (list == null) {
             return EMPTY_FILE_LIST;
         }
         return list;
     }
 
-    private static int countChildFileSystemItems(File fileSystemItem, FileSystemItemType itemType) {
+    private static int countChildFileSystemItems(File fileSystemItem, FileSystemItemType itemTypeToBeCounted) {
         if (fileSystemItem.isDirectory()) {
-            int counter = itemType.equals(FILE) ? 0 : 1;
+            int counter = itemTypeToBeCounted == FILE ? 0 : 1;
             for (File directory : getChildFileSystemItems(fileSystemItem, DIRECTORY)) {
-                counter += countChildFileSystemItems(directory, itemType);
+                counter += countChildFileSystemItems(directory, itemTypeToBeCounted);
             }
-            if (itemType.equals(FILE) || itemType.equals(ALL)) {
+            if (itemTypeToBeCounted == FILE || itemTypeToBeCounted == ALL) {
                 counter += getChildFileSystemItems(fileSystemItem, FILE).length;
             }
             return counter;
@@ -133,9 +133,8 @@ public class FileManager {
         if (destination.isDirectory()) {
             destination = new File(to + File.separator + source.getName());
         }
-        try (InputStream sourceFile = new FileInputStream(source);
-             OutputStream destinationFile = new FileOutputStream(destination);
-             OutputStream destinationStream = new BufferedOutputStream(destinationFile)) {
+        try (InputStream sourceFile = new BufferedInputStream(new FileInputStream(source));
+             OutputStream destinationStream = new BufferedOutputStream(new FileOutputStream(destination))) {
             while ((size = sourceFile.read(buffer)) > 0) {
                 destinationStream.write(buffer, 0, size);
             }
