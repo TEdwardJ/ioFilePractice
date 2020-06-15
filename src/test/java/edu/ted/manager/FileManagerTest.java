@@ -111,24 +111,20 @@ class FileManagerTest {
 
     private void createHierarchy() {
         File testFile = new File(getClass().getClassLoader().getResource("FA.txt").getFile());
+        File directory1 = new File(sourceDirectoryName+"/dir1");
+        File directory2 = new File(sourceDirectoryName+"/dir1/dir2");
+        File directory3 = new File(sourceDirectoryName+"/dir1/dir3");
+        File directory4 = new File(sourceDirectoryName+"/dir1/dir3/dir4");
         String sourceDirPath = sourceDir.getPath();
-        File dir1 = new File(sourceDirPath + File.separator + "dir1");
-        dir1.mkdir();
-        FileManager.copy(dir1.getPath(), sourceDirPath);
-        File dir2 = new File(dir1.getPath() + File.separator + "dir2");
-        dir2.mkdir();
-        File dir3 = new File(dir1.getPath() + File.separator + "dir3");
-        dir3.mkdir();
-        FileManager.copy(dir2.getPath(), dir1.getPath());
-        FileManager.copy(dir3.getPath(), dir1.getPath());
-        File dir4 = new File(dir3.getPath() + File.separator + "dir4");
-        dir4.mkdir();
-        FileManager.copy(dir4.getPath(), dir3.getPath());
-        FileManager.copy(testFile.getPath(), dir1.getAbsolutePath());
-        FileManager.copy(testFile.getPath(), dir2.getAbsolutePath() + File.separator + "FA2.txt");
-        FileManager.copy(testFile.getPath(), dir3.getAbsolutePath() + File.separator + "FA3.txt");
-        FileManager.copy(testFile.getPath(), dir4.getAbsolutePath() + File.separator + "FA4_1.txt");
-        FileManager.copy(testFile.getPath(), dir4.getAbsolutePath() + File.separator + "FA4_2.txt");
+        directory1.mkdir();
+        directory2.mkdir();
+        directory3.mkdir();
+        directory4.mkdir();
+        FileManager.copy(testFile.getPath(), directory1.getAbsolutePath());
+        FileManager.copy(testFile.getPath(), directory2.getAbsolutePath());
+        FileManager.copy(testFile.getPath(), directory3.getAbsolutePath());
+        FileManager.copy(testFile.getPath(), directory4.getAbsolutePath() + File.separator + "FA4_1.txt");
+        FileManager.copy(testFile.getPath(), directory4.getAbsolutePath() + File.separator + "FA4_2.txt");
     }
 
     @Test
