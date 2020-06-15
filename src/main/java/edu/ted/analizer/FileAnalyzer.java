@@ -19,31 +19,38 @@ public class FileAnalyzer {
     }
 
     public static void main(String[] args) {
-        if (args.length < 2 || args.length == 0) {
+        if (args.length < 2) {
             throw new IllegalArgumentException("Two arguments are required");
         }
         String sourceFile = args[0];
         String word = args[1];
         FileAnalyzer analyzer = new FileAnalyzer(sourceFile, word);
 
-        String report = analyzer.execute(sourceFile, word);
+        String report = analyzer.execute();
         System.out.println(report);
     }
 
-    public String execute(String sourceFile, String word) {
+    public String execute() {
+        return execute(sourceFile, word);
+    }
+
+    private String execute(String sourceFile, String word) {
         String fileText = getSourceFileText(sourceFile);
         List<String> sentenceList = splitToSentences(fileText);
         Map<String, Integer> filteredSentences = filterSentences(sentenceList, word);
 
-        String reportContent = getReportStatistics(word, filteredSentences, sourceFile);
-        return reportContent;
+        return getReportStatistics(word, filteredSentences, sourceFile);
     }
 
     protected String getReportStatistics(String word, Map<String, Integer> filteredSentenceList, String sourceFile) {
         StringBuilder report = new StringBuilder();
         int totalCounter = 0;
         for (Map.Entry<String, Integer> entry : filteredSentenceList.entrySet()) {
-            report.append(entry.getValue() + " time(s) in the sentence: " + entry.getKey() + "\n");
+            report
+                    .append(entry.getValue())
+                    .append(" time(s) in the sentence: ")
+                    .append(entry.getKey())
+                    .append("\n");
             totalCounter += entry.getValue();
         }
         report.insert(0, "The word " + word + " has been found " + totalCounter + " times in the file: " + sourceFile + ":\n");
@@ -64,7 +71,7 @@ public class FileAnalyzer {
 
     protected List<String> splitToSentences(String fileText) {
         List<String> sentencesList;
-        try (SentenceReader sentenceReader = new SentenceReader(new StringReader(fileText.toString()))) {
+        try (SentenceReader sentenceReader = new SentenceReader(new StringReader(fileText))) {
             String sentence;
             sentencesList = new ArrayList<>();
             while ((sentence = sentenceReader.readSentence()) != null) {
@@ -85,8 +92,6 @@ public class FileAnalyzer {
             while ((line = reader.readLine()) != null) {
                 text.append(line);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
