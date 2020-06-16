@@ -7,13 +7,12 @@ import java.util.Map;
 import static edu.ted.manager.FileSystemItemType.*;
 
 public class FileManager {
-    private static final File[] EMPTY_FILE_LIST = new File[]{};
-    private static final Map<FileSystemItemType, FileFilter> FILE_FILTERS = new HashMap<>(3, 1);
+    private static final File[] EMPTY_FILE_ARRAY = new File[]{};
+    private static final Map<FileSystemItemType, FileFilter> FILE_FILTERS = new HashMap<>(2, 1);
 
     static {
         FILE_FILTERS.put(DIRECTORY, File::isDirectory);
         FILE_FILTERS.put(FILE, File::isFile);
-        FILE_FILTERS.put(ALL, null);
     }
 
     /**
@@ -21,17 +20,21 @@ public class FileManager {
      * возвращает количество папок в папке и всех подпапках по пути
      */
     public static int countDirs(String path) {
-        File startDirectory = new File(path);
-        return countChildFileSystemItems(startDirectory, DIRECTORY);
+        File startFileSystemItem = new File(path);
+        return countChildFileSystemItems(startFileSystemItem, DIRECTORY);
     }
 
     /**
      * Метод по перемещению папок и файлов.
      * Параметр from - путь к файлу или папке, параметр to - путь к папке куда будет производиться копирование.
-    */
+     */
     public static void move(String from, String to) {
-        File startDirectory = new File(from);
-        copyFileSystemItems(startDirectory, to, true);
+        File startFileSystemItem = new File(from);
+        File destinationDirectory = new File(to);
+        if (destinationDirectory.isFile() && startFileSystemItem.isDirectory()) {
+            return;
+        }
+        copyFileSystemItems(startFileSystemItem, to, true);
     }
 
     /**
@@ -39,8 +42,8 @@ public class FileManager {
      * возвращает количество файлов в папке и всех подпапках по пути
      */
     public static int countFiles(String path) {
-        File startDirectory = new File(path);
-        return countChildFileSystemItems(startDirectory, FILE);
+        File startFileSystemItem = new File(path);
+        return countChildFileSystemItems(startFileSystemItem, FILE);
     }
 
     /**
@@ -48,8 +51,8 @@ public class FileManager {
      * Параметр from - путь к файлу или папке
      */
     public static void remove(String from) {
-        File startDirectory = new File(from);
-        removeFileSystemItemsRecursively(startDirectory);
+        File startFileSystemItem = new File(from);
+        removeFileSystemItemsRecursively(startFileSystemItem);
     }
 
     /**
@@ -57,24 +60,27 @@ public class FileManager {
      * Параметр from - путь к файлу или папке, параметр to - путь к папке куда будет производиться копирование
      */
     public static void copy(String from, String to) {
-        File startDirectory = new File(from);
-        copyFileSystemItems(startDirectory, to, false);
+        File startFileSystemItem = new File(from);
+        copyFileSystemItems(startFileSystemItem, to, false);
     }
 
-    private static File[] getChildFileSystemItems(File fileSystemItem, FileSystemItemType itemType) {
-        File[] list = fileSystemItem.listFiles(FILE_FILTERS.get(itemType));
-        if (list == null) {
-            return EMPTY_FILE_LIST;
+    private static File[] getChildFileSystemItems(File fileSystemItem, FileSystemItemType fileSystemItemType) {
+        File[] childFileSystemItemsArray = fileSystemItem.listFiles(FILE_FILTERS.get(fileSystemItemType));
+        if (childFileSystemItemsArray == null) {
+            return EMPTY_FILE_ARRAY;
         }
-        return list;
+        return childFileSystemItemsArray;
     }
 
     private static int countChildFileSystemItems(File fileSystemItem, FileSystemItemType itemTypeToBeCounted) {
         if (fileSystemItem.isDirectory()) {
-            int counter = itemTypeToBeCounted == FILE ? 0 : 1;
+            int counter = 0;
+            int takeDirectoriesIntoCount = itemTypeToBeCounted == FILE ? 0 : 1;
+            //Loop to count recursively in hierarchy
             for (File directory : getChildFileSystemItems(fileSystemItem, DIRECTORY)) {
-                counter += countChildFileSystemItems(directory, itemTypeToBeCounted);
+                counter += takeDirectoriesIntoCount + countChildFileSystemItems(directory, itemTypeToBeCounted);
             }
+            //Loop to count files on current level
             if (itemTypeToBeCounted == FILE || itemTypeToBeCounted == ALL) {
                 counter += getChildFileSystemItems(fileSystemItem, FILE).length;
             }
@@ -86,44 +92,28 @@ public class FileManager {
     private static void copyFileSystemItems(File fileSystemItem, String to, boolean move) {
         if (fileSystemItem.isDirectory()) {
             File destinationDir = copyDir(fileSystemItem, to);
-            if (destinationDir == null){
+            if (destinationDir == null) {
                 return;
             }
-            for (File directory : getChildDirectories(fileSystemItem)) {
+            for (File directory : getChildFileSystemItems(fileSystemItem, ALL)) {
                 copyFileSystemItems(directory, destinationDir.getPath(), move);
             }
-            for (File file : getChildFiles(fileSystemItem)) {
-                copyFile(file, destinationDir.getPath());
-                if (move) {
-                    file.delete();
-                }
-            }
-        } else if (fileSystemItem.isFile()) {
-            copyFile(fileSystemItem, to);
-        }
-        if (move) {
             fileSystemItem.delete();
+        } else if (fileSystemItem.isFile()) {
+            if (move) {
+                fileSystemItem.renameTo(new File(to + File.separator + fileSystemItem.getName()));
+            } else {
+                copyFile(fileSystemItem, to);
+            }
         }
     }
 
     private static void removeFileSystemItemsRecursively(File fileSystemItem) {
-        if (fileSystemItem.isDirectory()) {
-            for (File directory : getChildDirectories(fileSystemItem)) {
-                removeFileSystemItemsRecursively(directory);
-            }
-            for (File file : getChildFiles(fileSystemItem)) {
-                file.delete();
-            }
+        for (File directory : getChildFileSystemItems(fileSystemItem, ALL)) {
+            removeFileSystemItemsRecursively(directory);
+            directory.delete();
         }
         fileSystemItem.delete();
-    }
-
-    private static File[] getChildFiles(File fileSystemItem) {
-        return getChildFileSystemItems(fileSystemItem, FILE);
-    }
-
-    private static File[] getChildDirectories(File fileSystemItem) {
-        return getChildFileSystemItems(fileSystemItem, DIRECTORY);
     }
 
     private static void copyFile(File source, String to) {
@@ -146,13 +136,12 @@ public class FileManager {
     private static File copyDir(File sourceDir, String to) {
         File destinationDir = new File(to + File.separator + sourceDir.getName());
         if (!destinationDir.exists()) {
-            if (destinationDir.mkdir()){
+            if (destinationDir.mkdir()) {
                 return destinationDir;
-            } else{
+            } else {
                 return null;
             }
         }
         return destinationDir;
     }
-
 }
