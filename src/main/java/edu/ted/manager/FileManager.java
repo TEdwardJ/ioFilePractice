@@ -66,9 +66,9 @@ public class FileManager {
             int counter = 0;
             int takeDirectoriesIntoCount = itemTypeToBeCounted == FILE ? 0 : 1;
             //Loop to count recursively in hierarchy
-            for (File directory : getChildFileSystemItems(fileSystemItem)) {
-                if (directory.isDirectory()) {
-                    counter += takeDirectoriesIntoCount + countChildFileSystemItems(directory, itemTypeToBeCounted);
+            for (File item : getChildFileSystemItems(fileSystemItem)) {
+                if (item.isDirectory()) {
+                    counter += takeDirectoriesIntoCount + countChildFileSystemItems(item, itemTypeToBeCounted);
                 } else if (itemTypeToBeCounted != DIRECTORY) {
                     counter ++;
                 }
