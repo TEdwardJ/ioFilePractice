@@ -82,8 +82,8 @@ public class FileManager {
         if (fileSystemItem.isDirectory()) {
             File destinationDir = copyDir(fileSystemItem, to);
 
-            for (File directory : getChildFileSystemItems(fileSystemItem)) {
-                copyFileSystemItems(directory, destinationDir.getPath());
+            for (File item : getChildFileSystemItems(fileSystemItem)) {
+                copyFileSystemItems(item, destinationDir.getPath());
             }
             fileSystemItem.delete();
         } else if (fileSystemItem.isFile()) {
@@ -92,9 +92,9 @@ public class FileManager {
     }
 
     private static void removeFileSystemItemsRecursively(File fileSystemItem) {
-        for (File directory : getChildFileSystemItems(fileSystemItem)) {
-            removeFileSystemItemsRecursively(directory);
-            directory.delete();
+        for (File item : getChildFileSystemItems(fileSystemItem)) {
+            removeFileSystemItemsRecursively(item);
+            item.delete();
         }
         fileSystemItem.delete();
     }
