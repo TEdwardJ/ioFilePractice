@@ -1,49 +1,39 @@
 package edu.ted.manager;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
 
 import static edu.ted.manager.FileSystemItemType.*;
 
 public class FileManager {
     private static final File[] EMPTY_FILE_ARRAY = new File[]{};
-    private static final Map<FileSystemItemType, FileFilter> FILE_FILTERS = new HashMap<>(2, 1);
-
-    static {
-        FILE_FILTERS.put(DIRECTORY, File::isDirectory);
-        FILE_FILTERS.put(FILE, File::isFile);
-    }
-
     /**
-     * Принимает путь к папке
-     * возвращает количество папок в папке и всех подпапках по пути
+     * рекурсивно подсчитывает количество директорий по указанному пути
+     *
+     * @param path путь к папке
+     * @return количество папок в папке и всех подпапках по пути
      */
     public static int countDirs(String path) {
-        File startFileSystemItem = new File(path);
-        return countChildFileSystemItems(startFileSystemItem, DIRECTORY);
+        return countChildFileSystemItems(new File(path), DIRECTORY);
     }
 
     /**
-     * Метод по перемещению папок и файлов.
-     * Параметр from - путь к файлу или папке, параметр to - путь к папке куда будет производиться копирование.
+     * перемещает файлы и папки
+     *
+     * @param from путь к файлу или папке
+     * @param to   путь к папке куда будет производиться копирование
      */
     public static void move(String from, String to) {
-        File startFileSystemItem = new File(from);
-        File destinationDirectory = new File(to);
-        if (destinationDirectory.isFile() && startFileSystemItem.isDirectory()) {
-            return;
-        }
-        copyFileSystemItems(startFileSystemItem, to, true);
+        new File(from).renameTo(new File(to));
     }
 
     /**
-     * Принимает путь к папке,
-     * возвращает количество файлов в папке и всех подпапках по пути
+     * подсчитывает рекурсивно файлы по указанному пути
+     *
+     * @param path путь к папке
+     * @return количество файлов в папке и всех подпапках по пути
      */
     public static int countFiles(String path) {
-        File startFileSystemItem = new File(path);
-        return countChildFileSystemItems(startFileSystemItem, FILE);
+        return countChildFileSystemItems(new File(path), FILE);
     }
 
     /**
@@ -60,12 +50,11 @@ public class FileManager {
      * Параметр from - путь к файлу или папке, параметр to - путь к папке куда будет производиться копирование
      */
     public static void copy(String from, String to) {
-        File startFileSystemItem = new File(from);
-        copyFileSystemItems(startFileSystemItem, to, false);
+        copyFileSystemItems(new File(from), to);
     }
 
-    private static File[] getChildFileSystemItems(File fileSystemItem, FileSystemItemType fileSystemItemType) {
-        File[] childFileSystemItemsArray = fileSystemItem.listFiles(FILE_FILTERS.get(fileSystemItemType));
+    private static File[] getChildFileSystemItems(File fileSystemItem) {
+        File[] childFileSystemItemsArray = fileSystemItem.listFiles();
         if (childFileSystemItemsArray == null) {
             return EMPTY_FILE_ARRAY;
         }
@@ -77,39 +66,33 @@ public class FileManager {
             int counter = 0;
             int takeDirectoriesIntoCount = itemTypeToBeCounted == FILE ? 0 : 1;
             //Loop to count recursively in hierarchy
-            for (File directory : getChildFileSystemItems(fileSystemItem, DIRECTORY)) {
-                counter += takeDirectoriesIntoCount + countChildFileSystemItems(directory, itemTypeToBeCounted);
-            }
-            //Loop to count files on current level
-            if (itemTypeToBeCounted == FILE || itemTypeToBeCounted == ALL) {
-                counter += getChildFileSystemItems(fileSystemItem, FILE).length;
+            for (File directory : getChildFileSystemItems(fileSystemItem)) {
+                if (directory.isDirectory()) {
+                    counter += takeDirectoriesIntoCount + countChildFileSystemItems(directory, itemTypeToBeCounted);
+                } else if (itemTypeToBeCounted != DIRECTORY) {
+                    counter ++;
+                }
             }
             return counter;
         }
         return 0;
     }
 
-    private static void copyFileSystemItems(File fileSystemItem, String to, boolean move) {
+    private static void copyFileSystemItems(File fileSystemItem, String to) {
         if (fileSystemItem.isDirectory()) {
             File destinationDir = copyDir(fileSystemItem, to);
-            if (destinationDir == null) {
-                return;
-            }
-            for (File directory : getChildFileSystemItems(fileSystemItem, ALL)) {
-                copyFileSystemItems(directory, destinationDir.getPath(), move);
+
+            for (File directory : getChildFileSystemItems(fileSystemItem)) {
+                copyFileSystemItems(directory, destinationDir.getPath());
             }
             fileSystemItem.delete();
         } else if (fileSystemItem.isFile()) {
-            if (move) {
-                fileSystemItem.renameTo(new File(to + File.separator + fileSystemItem.getName()));
-            } else {
-                copyFile(fileSystemItem, to);
-            }
+            copyFile(fileSystemItem, to);
         }
     }
 
     private static void removeFileSystemItemsRecursively(File fileSystemItem) {
-        for (File directory : getChildFileSystemItems(fileSystemItem, ALL)) {
+        for (File directory : getChildFileSystemItems(fileSystemItem)) {
             removeFileSystemItemsRecursively(directory);
             directory.delete();
         }
@@ -117,7 +100,6 @@ public class FileManager {
     }
 
     private static void copyFile(File source, String to) {
-        int size;
         byte[] buffer = new byte[1024];
         File destination = new File(to);
         if (destination.isDirectory()) {
@@ -125,11 +107,12 @@ public class FileManager {
         }
         try (InputStream sourceFile = new BufferedInputStream(new FileInputStream(source));
              OutputStream destinationStream = new BufferedOutputStream(new FileOutputStream(destination))) {
-            while ((size = sourceFile.read(buffer)) > 0) {
-                destinationStream.write(buffer, 0, size);
+            int count;
+            while ((count = sourceFile.read(buffer)) != -1) {
+                destinationStream.write(buffer, 0, count);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -138,8 +121,6 @@ public class FileManager {
         if (!destinationDir.exists()) {
             if (destinationDir.mkdir()) {
                 return destinationDir;
-            } else {
-                return null;
             }
         }
         return destinationDir;

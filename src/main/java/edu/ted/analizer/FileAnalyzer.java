@@ -10,8 +10,8 @@ import java.util.regex.Pattern;
 
 public class FileAnalyzer {
 
-    private String sourceFile;
-    private String word;
+    private final String sourceFile;
+    private final String word;
 
     public FileAnalyzer(String sourceFile, String word) {
         this.sourceFile = sourceFile;
@@ -24,28 +24,23 @@ public class FileAnalyzer {
         }
         String sourceFile = args[0];
         String word = args[1];
-        FileAnalyzer analyzer = new FileAnalyzer(sourceFile, word);
 
-        String report = analyzer.execute();
+        String report = new FileAnalyzer(sourceFile, word).execute();
         System.out.println(report);
     }
 
-    public String execute() {
-        return execute(sourceFile, word);
-    }
-
-    private String execute(String sourceFile, String word) {
-        String fileText = getSourceFileText(sourceFile);
+    private String execute() {
+        String fileText = getSourceText(sourceFile);
         List<String> sentenceList = splitToSentences(fileText);
         Map<String, Integer> filteredSentences = filterSentences(sentenceList, word);
 
         return getReportStatistics(word, filteredSentences, sourceFile);
     }
 
-    protected String getReportStatistics(String word, Map<String, Integer> filteredSentenceList, String sourceFile) {
+    protected static String getReportStatistics(String word, Map<String, Integer> filteredResultsMap, String sourceFile) {
         StringBuilder report = new StringBuilder();
         int totalCounter = 0;
-        for (Map.Entry<String, Integer> entry : filteredSentenceList.entrySet()) {
+        for (Map.Entry<String, Integer> entry : filteredResultsMap.entrySet()) {
             report
                     .append(entry.getValue())
                     .append(" time(s) in the sentence: ")
@@ -57,19 +52,19 @@ public class FileAnalyzer {
         return report.toString();
     }
 
-    protected Map<String, Integer> filterSentences(List<String> sentenceList, String word) {
-        Pattern wordPattern = Pattern.compile("(?i)[ ]{1,}(" + word + ")[ ]{1,}");
-        Map<String, Integer> filteredSentencesList = new HashMap<>();
+    protected static Map<String, Integer> filterSentences(List<String> sentenceList, String word) {
+        Pattern wordPattern = Pattern.compile("(?i)[ ]{1,}(" + word + ")[:; ]{1,}");
+        Map<String, Integer> filteredResultsMap = new HashMap<>();
         for (String sentence : sentenceList) {
-            Matcher matcher = wordPattern.matcher(sentence);
-            if (matcher.find()) {
-                filteredSentencesList.put(sentence, matcher.groupCount());
+            Matcher wordMatcher = wordPattern.matcher(sentence);
+            if (wordMatcher.find()) {
+                filteredResultsMap.put(sentence, wordMatcher.groupCount());
             }
         }
-        return filteredSentencesList;
+        return filteredResultsMap;
     }
 
-    protected List<String> splitToSentences(String fileText) {
+    protected static List<String> splitToSentences(String fileText) {
         List<String> sentencesList;
         try (SentenceReader sentenceReader = new SentenceReader(new StringReader(fileText))) {
             String sentence;
@@ -84,7 +79,7 @@ public class FileAnalyzer {
         return null;
     }
 
-    protected String getSourceFileText(String sourceFilePath) {
+    protected String getSourceText(String sourceFilePath) {
         File sourceFile = new File(sourceFilePath);
         StringBuilder text = new StringBuilder();
         String line;
@@ -98,7 +93,7 @@ public class FileAnalyzer {
         return text.toString();
     }
 
-    protected String getSourceFileText() {
-        return getSourceFileText(sourceFile);
+    protected String getSourceText() {
+        return getSourceText(sourceFile);
     }
 }

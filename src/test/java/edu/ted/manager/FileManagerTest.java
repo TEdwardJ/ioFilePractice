@@ -1,12 +1,10 @@
 package edu.ted.manager;
 
-import edu.ted.manager.FileManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,61 +24,72 @@ class FileManagerTest {
         return directory;
     }
 
-    private void createTestDirectoryStructure() {
+    @BeforeEach
+    public void init() throws IOException {
         sourceDirectoryName = "testSourceDirectory";
         destDirectoryName = "testDestinationDirectory";
         sourceDir = createTestDirectory(sourceDirectoryName);
         destDir = createTestDirectory(destDirectoryName);
-    }
-
-    @BeforeEach
-    public void init() {
-        createTestDirectoryStructure();
+        createHierarchy();
     }
 
     @AfterEach
-    public void finalize() {
+    public void after() {
         FileManager.remove(sourceDir.getPath());
         FileManager.remove(destDir.getPath());
     }
 
     @Test
-    public void givenDirectoryAndCopyToDestinationDirectory_whenExists_thenCorrect() {
-        String destDirPath = destDir.getPath();
-        FileManager.copy(sourceDir.getPath(), destDirPath);
-        File copiedDir = new File(destDirPath + File.separator + sourceDir.getName());
+    public void givenSingleDirectoryAndCopyToDestinationDirectory_whenExists_thenCorrect() {
+        File destinationDirectory = new File(destDirectoryName + File.separator + sourceDir.getName());
         assertTrue(destDir.exists());
-        assertTrue(copiedDir.exists());
+        assertFalse(destinationDirectory.exists());
+        FileManager.copy(sourceDir.getPath(), destDirectoryName);
+        assertTrue(destinationDirectory.exists());
     }
 
     @Test
-    public void givenDestinationDirAndCopyNonExistingDir_whenDestinationDirectoryIsEmpty_thenCorrext() {
-        String destDirPath = destDir.getPath();
-
-        FileManager.copy(sourceDir.getPath() + File.separator + "NonExisting", destDirPath);
-        File copiedDir = new File(destDirPath + File.separator + sourceDir.getName());
+    public void givenDestinationDirAndCopyNonExistingDir_whenDestinationDirectoryIsEmpty_thenCorrect() {
+        FileManager.copy(sourceDir.getPath() + "/NonExisting.txt", destDirectoryName);
+        File copiedDir = new File(destDirectoryName + File.separator + sourceDir.getName());
         assertTrue(destDir.exists());
         assertFalse(copiedDir.exists());
     }
 
     @Test
-    public void givenFile_whenCopiedToDestination_thenCorrect() {
-        File testFile = new File(getClass().getClassLoader().getResource("FA.txt").getFile());
-        String destDirPath = destDir.getPath();
+    public void givenSingleFile_whenCopiedToDestination_thenCorrect() throws IOException {
+        String sourceFileContent = "Hello World!!!";
+        File testFile = createFile(sourceDirectoryName + "/testFile.txt", sourceFileContent);
 
-        FileManager.copy(testFile.getPath(), destDirPath);
-        File copiedFile = new File(destDirPath + File.separator + testFile.getName());
+        FileManager.copy(testFile.getPath(), destDirectoryName);
+        File copiedFile = new File(destDirectoryName + "/" + testFile.getName());
         assertTrue(destDir.exists());
         assertTrue(copiedFile.exists());
+        String destinationFileContent = readFile(copiedFile);
+        assertEquals(sourceFileContent, destinationFileContent);
+        assertEquals(testFile.length(), copiedFile.length());
+    }
+
+    @Test
+    public void givenSingleEmptyFile_whenCopiedToDestination_thenCorrect() throws IOException {
+        String sourceFileContent = "";
+        File testFile = createFile(sourceDirectoryName + "/testFile.txt", sourceFileContent);
+
+        FileManager.copy(testFile.getPath(), destDirectoryName);
+        File copiedFile = new File(destDirectoryName + "/" + testFile.getName());
+        assertTrue(destDir.exists());
+        assertTrue(copiedFile.exists());
+        String destinationFileContent = readFile(copiedFile);
+        assertEquals(sourceFileContent, destinationFileContent);
+        assertEquals(testFile.length(), copiedFile.length());
     }
 
     @Test
     public void givenDirectoryHierarchy_whenCopiedToAnotherDirectory_thenCorrect() {
-        createHierarchy();
         FileManager.copy(sourceDirectoryName, destDirectoryName);
         int sourceCountFiles = FileManager.countFiles(sourceDir.getPath());
-        int destCountFiles = FileManager.countFiles(destDir.getPath());
         int sourceCountDirectories = FileManager.countDirs(sourceDir.getPath());
+        int destCountFiles = FileManager.countFiles(destDir.getPath());
         int destCountDirectories = FileManager.countDirs(destDir.getPath() + File.separator + sourceDir.getName());
         assertEquals(sourceCountFiles, destCountFiles);
         assertEquals(sourceCountDirectories, destCountDirectories);
@@ -88,24 +97,21 @@ class FileManagerTest {
 
     @Test
     public void givenDirectoryHierarchy_whenMovedToAnotherDirectory_thenCorrect() {
-        createHierarchy();
-        FileManager.move(sourceDirectoryName + "/dir1", destDirectoryName);
+        FileManager.move(sourceDirectoryName + "/dir1", destDirectoryName+"/dir1");
         int sourceCountFiles = FileManager.countFiles(sourceDir.getPath());
-        int destCountFiles = FileManager.countFiles(destDir.getPath());
         int sourceCountDirectories = FileManager.countDirs(sourceDir.getPath());
+        int destCountFiles = FileManager.countFiles(destDir.getPath());
         int destCountDirectories = FileManager.countDirs(destDir.getPath());
         assertTrue(destCountDirectories > 0);
         assertTrue(destCountFiles > 0);
-        assertNotEquals(sourceCountFiles, destCountFiles);
-        assertNotEquals(sourceCountDirectories, destCountDirectories);
+        assertEquals(0, sourceCountFiles);
+        assertEquals(0, sourceCountDirectories);
     }
 
     @Test
     public void givenDirectoryHierarchy_whenMovingToFile_thenNoAction() throws IOException {
-        createHierarchy();
-
-        new File(destDir.getAbsolutePath() + "/FA.txt").createNewFile();
-        FileManager.move(sourceDirectoryName, destDirectoryName + "/FA.txt");
+        createFile(destDir.getAbsolutePath() + "/dest.txt", "Help me!!!");
+        FileManager.move(sourceDirectoryName, destDirectoryName + "/dest.txt");
         int destCountFiles = FileManager.countFiles(destDir.getPath());
         int destCountDirectories = FileManager.countDirs(destDir.getPath() + File.separator + sourceDir.getName());
         assertEquals(1, destCountFiles);
@@ -114,46 +120,40 @@ class FileManagerTest {
 
     @Test
     public void givenDirectoryHierarchy_whenRemoved_thenCorrect() {
-        createHierarchy();
+        assertTrue(FileManager.countDirs(sourceDir.getPath()) > 0);
+        assertTrue(FileManager.countDirs(sourceDir.getPath()) > 0);
         assertTrue(sourceDir.exists());
         assertTrue(destDir.exists());
         FileManager.remove(sourceDirectoryName);
-        FileManager.remove(destDirectoryName);
+        assertTrue(FileManager.countDirs(sourceDir.getPath()) == 0);
+        assertTrue(FileManager.countDirs(sourceDir.getPath()) == 0);
         assertFalse(sourceDir.exists());
+        FileManager.remove(destDirectoryName);
         assertFalse(destDir.exists());
     }
 
-    private void createHierarchy() {
-        File testFile = new File(getClass().getClassLoader().getResource("FA.txt").getFile());
-        File directory1 = new File(sourceDirectoryName + "/dir1");
-        File directory2 = new File(sourceDirectoryName + "/dir1/dir2");
-        File directory3 = new File(sourceDirectoryName + "/dir1/dir3");
-        File directory4 = new File(sourceDirectoryName + "/dir1/dir3/dir4");
-        String sourceDirPath = sourceDir.getPath();
-        directory1.mkdir();
-        directory2.mkdir();
-        directory3.mkdir();
-        directory4.mkdir();
-        FileManager.copy(testFile.getPath(), directory1.getAbsolutePath());
-        FileManager.copy(testFile.getPath(), directory2.getAbsolutePath());
-        FileManager.copy(testFile.getPath(), directory3.getAbsolutePath());
-        FileManager.copy(testFile.getPath(), directory4.getAbsolutePath() + File.separator + "FA4_1.txt");
-        FileManager.copy(testFile.getPath(), directory4.getAbsolutePath() + File.separator + "FA4_2.txt");
+    private void createHierarchy() throws IOException {
+        new File("testSourceDirectory");
+        new File("testSourceDirectory/dir1").mkdir();
+        new File( "testSourceDirectory/dir1/dir2").mkdir();
+        new File( "testSourceDirectory/dir1/dir3").mkdir();
+        new File("testSourceDirectory/dir1/dir3/dir4").mkdir();
+        createFile("testSourceDirectory/dir1" + "/File1.txt", "Just a text content of test file");
+        createFile("testSourceDirectory/dir1/dir2" + "/File2.txt", "Just a text content of test file");
+        createFile("testSourceDirectory/dir1/dir3" + "/File3.txt", "Just a text content of test file");
+        createFile("testSourceDirectory/dir1/dir3/dir4" + "/File41.txt", "Just a text content of test file");
+        createFile("testSourceDirectory/dir1/dir3/dir4" + "/File42.txt", "Just a text content of test file");
     }
 
     @Test
     void givenDirectoryHierarchyAndCountFiles_whenNonZero_thenCorrect() {
-        createHierarchy();
         int filesCount = FileManager.countFiles(sourceDir.getName());
-        assertTrue(filesCount > 0);
         assertEquals(5, filesCount);
     }
 
     @Test
     void givenDirectoryHierarchyAndCountDirectories_whenNonZero_thenCorrect() {
-        createHierarchy();
         int dirsCount = FileManager.countDirs(sourceDir.getName());
-        assertTrue(dirsCount > 0);
         assertEquals(4, dirsCount);
     }
 
@@ -161,8 +161,36 @@ class FileManagerTest {
     void givenNonExistingDirectory_whenCountDirs_thenZero() {
         int dirsCount = FileManager.countDirs("C:\\JavaCourse12");
         assertEquals(0, dirsCount);
-        System.out.println("directories: " + dirsCount);
     }
 
+    private File createFile(String path, String contentText) throws IOException {
+        File fileToBeCreated = new File(path);
+        if (contentText == null || contentText.length()==0){
+            fileToBeCreated.createNewFile();
+            return fileToBeCreated;
+        }
+        try (FileWriter writer = new FileWriter(fileToBeCreated)) {
+            writer.write(contentText);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return fileToBeCreated;
+    }
 
+    private String readFile(File path) {
+        StringBuilder contentText = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line;
+            while((line = reader.readLine())!=null){
+                contentText.append(line);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return contentText.toString();
+    }
 }
