@@ -74,9 +74,8 @@ public class FileAnalyzer {
             }
             return sentencesList;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
     protected String getSourceText(String sourceFilePath) {
@@ -88,7 +87,7 @@ public class FileAnalyzer {
                 text.append(line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         return text.toString();
     }
